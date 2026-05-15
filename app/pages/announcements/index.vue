@@ -5,7 +5,10 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Announcements</h1>
-        <p class="page-sub">{{ announcements.length }} announcement{{ announcements.length !== 1 ? 's' : '' }} posted</p>
+        <p class="page-sub">
+          <span v-if="loading">Loading…</span>
+          <span v-else>{{ announcements.length }} announcement{{ announcements.length !== 1 ? 's' : '' }} posted</span>
+        </p>
       </div>
       <button class="btn-primary" @click="openCreateModal">
         <v-icon size="16" class="mr-1">mdi-plus</v-icon>
@@ -35,27 +38,44 @@
       </div>
     </div>
 
+    <!-- LOADING STATE -->
+    <div v-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading announcements…</p>
+    </div>
+
+    <!-- ERROR STATE -->
+    <div v-else-if="error" class="error-state">
+      <v-icon size="36" color="#ef4444">mdi-alert-circle-outline</v-icon>
+      <p class="error-title">Failed to load announcements</p>
+      <p class="error-sub">{{ error }}</p>
+      <button class="btn-primary" @click="fetchAnnouncements">
+        <v-icon size="15" class="mr-1">mdi-refresh</v-icon>
+        Try Again
+      </button>
+    </div>
+
     <!-- CARDS GRID -->
-    <div class="cards-grid" v-if="filteredAnnouncements.length > 0">
+    <div class="cards-grid" v-else-if="filteredAnnouncements.length > 0">
       <div
         v-for="ann in filteredAnnouncements"
         :key="ann.id"
         class="ann-card"
         :class="{ 'is-accomplished': ann.accomplished, 'is-new': ann.isNew }"
       >
-        <!-- Status badge -->
-        <div class="status-badge" :class="ann.accomplished ? 'accomplished' : 'ongoing'">
-          <v-icon size="11">{{ ann.accomplished ? 'mdi-check-circle' : 'mdi-clock-outline' }}</v-icon>
-          {{ ann.accomplished ? 'Accomplished' : 'Ongoing' }}
-        </div>
-
-        <!-- Card header -->
+        <!-- Card header: recipient left | status+date stacked right -->
         <div class="card-header">
-          <span class="recipient-tag" :class="ann.recipient.toLowerCase().replace(/\s+/g, '-')">
+          <span class="recipient-tag" :class="recipientClass(ann.recipient)">
             <v-icon size="11" class="mr-1">mdi-account-group-outline</v-icon>
             {{ ann.recipient }}
           </span>
-          <span class="card-date">{{ ann.date }}</span>
+          <div class="card-header-right">
+            <div class="status-badge" :class="ann.accomplished ? 'accomplished' : 'ongoing'">
+              <v-icon size="11">{{ ann.accomplished ? 'mdi-check-circle' : 'mdi-clock-outline' }}</v-icon>
+              {{ ann.accomplished ? 'Accomplished' : 'Ongoing' }}
+            </div>
+            <span class="card-date">{{ formatDate(ann.created_at || ann.date) }}</span>
+          </div>
         </div>
 
         <!-- Title & body -->
@@ -65,18 +85,14 @@
         <!-- Footer -->
         <div class="card-footer">
           <div class="author">
-            <div class="author-avatar" :style="{ background: avatarColor(ann.author) }">
-              {{ initials(ann.author) }}
+            <div class="author-avatar" :style="{ background: avatarColor(authorName(ann)) }">
+              {{ initials(authorName(ann)) }}
             </div>
-            <span class="author-name">{{ ann.author }}</span>
+            <span class="author-name">{{ authorName(ann) }}</span>
           </div>
           <div class="card-actions">
-            <button
-              class="card-btn status-btn"
-              @click="toggleAccomplished(ann)"
-              :title="ann.accomplished ? 'Mark as Ongoing' : 'Mark as Accomplished'"
-            >
-              <v-icon size="14">{{ ann.accomplished ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline' }}</v-icon>
+            <button class="card-btn view-btn" @click="openViewModal(ann)" title="View announcement">
+              <v-icon size="14">mdi-eye-outline</v-icon>
             </button>
             <button class="card-btn edit-btn" @click="openEditModal(ann)">
               <v-icon size="14">mdi-pencil-outline</v-icon>
@@ -90,7 +106,7 @@
     </div>
 
     <!-- EMPTY STATE -->
-    <div v-else class="empty-state">
+    <div v-else-if="!loading" class="empty-state">
       <div class="empty-icon">
         <v-icon size="40" color="#94a3b8">mdi-bullhorn-outline</v-icon>
       </div>
@@ -102,6 +118,58 @@
       </button>
     </div>
 
+
+    <!-- ── VIEW MODAL ──────────────────────────────── -->
+    <transition name="modal">
+      <div v-if="showViewModal" class="modal-backdrop" @click.self="showViewModal = false">
+        <div class="modal modal-view">
+
+          <!-- Colored top band based on status -->
+          <div class="view-band" :class="viewTarget?.accomplished ? 'band-done' : 'band-ongoing'"></div>
+
+          <div class="modal-header view-header">
+            <div class="view-header-meta">
+              <span class="recipient-tag" :class="recipientClass(viewTarget?.recipient)">
+                <v-icon size="11" class="mr-1">mdi-account-group-outline</v-icon>
+                {{ viewTarget?.recipient }}
+              </span>
+              <div class="status-badge" :class="viewTarget?.accomplished ? 'accomplished' : 'ongoing'">
+                <v-icon size="11">{{ viewTarget?.accomplished ? 'mdi-check-circle' : 'mdi-clock-outline' }}</v-icon>
+                {{ viewTarget?.accomplished ? 'Accomplished' : 'Ongoing' }}
+              </div>
+            </div>
+            <button class="modal-close" @click="showViewModal = false">
+              <v-icon size="18">mdi-close</v-icon>
+            </button>
+          </div>
+
+          <div class="view-body">
+            <h2 class="view-title">{{ viewTarget?.title }}</h2>
+
+            <div class="view-meta-row">
+              <div class="view-author">
+                <div class="author-avatar" :style="{ background: avatarColor(authorName(viewTarget)) }">
+                  {{ initials(authorName(viewTarget)) }}
+                </div>
+                <div class="view-author-info">
+                  <span class="view-author-name">{{ authorName(viewTarget) }}</span>
+                  <span class="view-date">Posted {{ formatDate(viewTarget?.created_at || viewTarget?.date) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="view-divider"></div>
+
+            <p class="view-content">{{ viewTarget?.body }}</p>
+          </div>
+
+          <div class="modal-footer view-footer">
+            <button class="btn-cancel" @click="showViewModal = false">Close</button>
+          </div>
+
+        </div>
+      </div>
+    </transition>
 
     <!-- ── CREATE / EDIT MODAL ─────────────────────── -->
     <transition name="modal">
@@ -164,17 +232,25 @@
               <span class="char-count">{{ form.body.length }} characters</span>
             </div>
 
+            <!-- API Error inside modal -->
+            <div v-if="modalError" class="modal-error">
+              <v-icon size="14" color="#ef4444">mdi-alert-circle-outline</v-icon>
+              {{ modalError }}
+            </div>
+
           </div>
 
           <div class="modal-footer">
-            <button class="btn-cancel" @click="closeModal">Cancel</button>
+            <button class="btn-cancel" @click="closeModal" :disabled="saving">Cancel</button>
             <button
               class="btn-save"
               @click="saveAnnouncement"
-              :disabled="!form.title.trim() || !form.body.trim()"
+              :disabled="!form.title.trim() || !form.body.trim() || saving"
             >
-              <v-icon size="15" class="mr-1">{{ isEditing ? 'mdi-content-save-outline' : 'mdi-bullhorn-outline' }}</v-icon>
-              {{ isEditing ? 'Save Changes' : 'Post Announcement' }}
+              <v-icon size="15" class="mr-1">
+                {{ saving ? 'mdi-loading mdi-spin' : (isEditing ? 'mdi-content-save-outline' : 'mdi-bullhorn-outline') }}
+              </v-icon>
+              {{ saving ? 'Saving…' : (isEditing ? 'Save Changes' : 'Post Announcement') }}
             </button>
           </div>
 
@@ -195,8 +271,10 @@
             Are you sure you want to delete <strong>"{{ deleteTarget?.title }}"</strong>? This cannot be undone.
           </p>
           <div class="modal-footer centered">
-            <button class="btn-cancel" @click="showDeleteModal = false">Cancel</button>
-            <button class="btn-delete" @click="deleteAnnouncement">Delete</button>
+            <button class="btn-cancel" @click="showDeleteModal = false" :disabled="deleting">Cancel</button>
+            <button class="btn-delete" @click="deleteAnnouncement" :disabled="deleting">
+              {{ deleting ? 'Deleting…' : 'Delete' }}
+            </button>
           </div>
         </div>
       </div>
@@ -207,15 +285,18 @@
 
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 definePageMeta({
   layout: "authenticated",
   middleware: "auth",
 });
 
+const config = useRuntimeConfig();
+const API_BASE = `${config.public.apiBase}/api/announcements`;
+
 /* ── Recipients ──────────────────────────────────── */
-const recipients = ["All Members", "Lectors", "Commentators", "Coordinators", "Administrators"];
+const recipients = ["All Members", "Officers", "New Testament", "Old Testament"];
 
 /* ── Filters ─────────────────────────────────────── */
 const filters = [
@@ -223,65 +304,19 @@ const filters = [
   { value: "ongoing",       label: "🕐 Ongoing" },
   { value: "accomplished",  label: "✅ Accomplished" },
   { value: "All Members",   label: "All Members" },
-  { value: "Lectors",       label: "Lectors" },
-  { value: "Commentators",  label: "Commentators" },
-  { value: "Coordinators",  label: "Coordinators" },
-  { value: "Administrators",label: "Administrators" },
+  { value: "Officers",      label: "Officers" },
+  { value: "New Testament", label: "New Testament" },
+  { value: "Old Testament", label: "Old Testament" },
 ];
 
-/* ── Data ────────────────────────────────────────── */
-const announcements = ref([
-  {
-    id: 1,
-    title: "Mass Schedule for Holy Week",
-    body: "Please be informed that our Holy Week masses will follow a special schedule. Palm Sunday mass will be at 6AM, 8AM, and 10AM. Please arrive early to get a seat.",
-    recipient: "All Members",
-    author: "Fr. Jose Santos",
-    date: "Mar 1, 2025",
-    accomplished: false,
-    isNew: false,
-  },
-  {
-    id: 2,
-    title: "Lectors & Commentators Formation Seminar",
-    body: "All active lectors and commentators are required to attend the upcoming formation seminar on March 15. Attendance is mandatory. Please confirm your attendance with the coordinator.",
-    recipient: "Lectors",
-    author: "Maria Reyes",
-    date: "Feb 28, 2025",
-    accomplished: false,
-    isNew: false,
-  },
-  {
-    id: 3,
-    title: "Reminder: Submit Your Availability",
-    body: "Kindly submit your availability for the month of April on or before March 10. Late submissions will not be accommodated in the scheduling.",
-    recipient: "Commentators",
-    author: "Ana Cruz",
-    date: "Feb 25, 2025",
-    accomplished: true,
-    isNew: false,
-  },
-  {
-    id: 4,
-    title: "New Member Orientation",
-    body: "Welcome to our new members! An orientation will be held on March 8 at 3PM in the parish hall. Please bring a valid ID and your baptismal certificate.",
-    recipient: "All Members",
-    author: "Pedro Dela Cruz",
-    date: "Feb 20, 2025",
-    accomplished: true,
-    isNew: false,
-  },
-  {
-    id: 5,
-    title: "Coordinator Meeting This Saturday",
-    body: "All coordinators are required to attend the monthly meeting this Saturday at 9AM in the sacristy. Agenda will be sent via group chat.",
-    recipient: "Coordinators",
-    author: "Maria Reyes",
-    date: "Mar 2, 2025",
-    accomplished: false,
-    isNew: false,
-  },
-]);
+/* ── State ───────────────────────────────────────── */
+const announcements  = ref([]);
+const loading        = ref(false);
+const error          = ref(null);
+const togglingId     = ref(null);
+const saving         = ref(false);
+const deleting       = ref(false);
+const modalError     = ref(null);
 
 /* ── Search & filter ─────────────────────────────── */
 const search       = ref("");
@@ -303,7 +338,7 @@ const filteredAnnouncements = computed(() => {
     list = list.filter(a =>
       a.title.toLowerCase().includes(q) ||
       a.body.toLowerCase().includes(q) ||
-      a.author.toLowerCase().includes(q) ||
+      (authorName(a)).toLowerCase().includes(q) ||
       a.recipient.toLowerCase().includes(q)
     );
   }
@@ -312,15 +347,77 @@ const filteredAnnouncements = computed(() => {
   return [...list].sort((a, b) => (a.accomplished ? 1 : 0) - (b.accomplished ? 1 : 0));
 });
 
-/* ── Avatar helpers ──────────────────────────────── */
-const palette = ["#0369a1", "#0891b2", "#0c4a6e", "#0e7490", "#075985"];
-const avatarColor = (name) => palette[name.charCodeAt(0) % palette.length];
-const initials    = (name) => name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+/* ── API: Fetch ──────────────────────────────────── */
+const fetchAnnouncements = async () => {
+  loading.value = true;
+  error.value   = null;
+  try {
+    const data = await $fetch(API_BASE);
+    announcements.value = (data.data || []).map(a => ({ ...a, isNew: false }));
+  } catch (e) {
+    error.value = e?.data?.message || e?.message || "Something went wrong.";
+  } finally {
+    loading.value = false;
+  }
+};
 
-/* ── Toggle accomplished ─────────────────────────── */
-const toggleAccomplished = (ann) => { ann.accomplished = !ann.accomplished; };
+onMounted(fetchAnnouncements);
 
-/* ── Modal ───────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────── */
+const authorName = (ann) => ann.user?.name || ann.author || "Unknown";
+
+const formatDate = (raw) => {
+  if (!raw) return "";
+  const d = new Date(raw);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+const recipientClass = (r) =>
+  ({
+    "All Members":   "all-members",
+    "Officers":      "officers",
+    "New Testament": "new-testament",
+    "Old Testament": "old-testament",
+  }[r] || "all-members");
+
+const palette    = ["#0369a1", "#0891b2", "#0c4a6e", "#0e7490", "#075985"];
+const avatarColor = (name) => palette[(name || "?").charCodeAt(0) % palette.length];
+const initials    = (name) => (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+
+/* ── API: Toggle ─────────────────────────────────── */
+const toggleAccomplished = async (ann) => {
+  togglingId.value = ann.id;
+  try {
+    const data = await $fetch(`${API_BASE}/${ann.id}/toggle`, { method: "PATCH" });
+    ann.accomplished = data.data.accomplished;
+  } catch (e) {
+    console.error("Toggle failed:", e);
+  } finally {
+    togglingId.value = null;
+  }
+};
+
+/* ── View Modal ──────────────────────────────────── */
+const showViewModal = ref(false);
+const viewTarget    = ref(null);
+
+const openViewModal = (ann) => {
+  viewTarget.value    = ann;
+  showViewModal.value = true;
+};
+
+const openEditFromView = () => {
+  showViewModal.value = false;
+  openEditModal(viewTarget.value);
+};
+
+const toggleFromView = async () => {
+  await toggleAccomplished(viewTarget.value);
+  const updated = announcements.value.find(a => a.id === viewTarget.value?.id);
+  if (updated) viewTarget.value = updated;
+};
+
+/* ── Create/Edit Modal ───────────────────────────── */
 const showModal  = ref(false);
 const isEditing  = ref(false);
 const editTarget = ref(null);
@@ -329,58 +426,96 @@ const emptyForm = () => ({ title: "", body: "", recipient: "All Members", accomp
 const form      = ref(emptyForm());
 
 const openCreateModal = () => {
-  form.value = emptyForm();
-  isEditing.value = false;
-  showModal.value = true;
-};
-
-const openEditModal = (ann) => {
-  form.value = { title: ann.title, body: ann.body, recipient: ann.recipient, accomplished: ann.accomplished };
-  isEditing.value  = true;
-  editTarget.value = ann;
+  form.value   = emptyForm();
+  isEditing.value  = false;
+  editTarget.value = null;
+  modalError.value = null;
   showModal.value  = true;
 };
 
-const closeModal = () => { showModal.value = false; };
-
-const saveAnnouncement = () => {
-  if (!form.value.title.trim() || !form.value.body.trim()) return;
-
-  if (isEditing.value && editTarget.value) {
-    Object.assign(editTarget.value, {
-      title:        form.value.title.trim(),
-      body:         form.value.body.trim(),
-      recipient:    form.value.recipient,
-      accomplished: form.value.accomplished,
-      isNew:        false,
-    });
-  } else {
-    announcements.value.unshift({
-      id:           Date.now(),
-      title:        form.value.title.trim(),
-      body:         form.value.body.trim(),
-      recipient:    form.value.recipient,
-      accomplished: form.value.accomplished,
-      author:       "You",
-      date:         new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      isNew:        true,
-    });
-    setTimeout(() => {
-      const a = announcements.value.find(a => a.isNew);
-      if (a) a.isNew = false;
-    }, 2000);
-  }
-  closeModal();
+const openEditModal = (ann) => {
+  form.value = {
+    title:        ann.title,
+    body:         ann.body,
+    recipient:    ann.recipient,
+    accomplished: !!ann.accomplished,
+  };
+  isEditing.value  = true;
+  editTarget.value = ann;
+  modalError.value = null;
+  showModal.value  = true;
 };
 
-/* ── Delete ──────────────────────────────────────── */
+const closeModal = () => {
+  if (saving.value) return;
+  showModal.value = false;
+};
+
+/* ── API: Save (create / update) ─────────────────── */
+const saveAnnouncement = async () => {
+  if (!form.value.title.trim() || !form.value.body.trim()) return;
+
+  saving.value     = true;
+  modalError.value = null;
+
+  const payload = {
+    title:        form.value.title.trim(),
+    body:         form.value.body.trim(),
+    recipient:    form.value.recipient,
+    accomplished: form.value.accomplished,
+  };
+
+  try {
+    if (isEditing.value && editTarget.value) {
+      // UPDATE
+      const data = await $fetch(`${API_BASE}/${editTarget.value.id}`, {
+        method: "PUT",
+        body:   payload,
+      });
+      const updated = data.data;
+      const idx = announcements.value.findIndex(a => a.id === editTarget.value.id);
+      if (idx !== -1) announcements.value[idx] = { ...announcements.value[idx], ...updated, isNew: false };
+    } else {
+      // CREATE
+      const data = await $fetch(API_BASE, {
+        method: "POST",
+        body:   payload,
+      });
+      const created = { ...data.data, isNew: true };
+      announcements.value.unshift(created);
+      setTimeout(() => {
+        const a = announcements.value.find(a => a.id === created.id);
+        if (a) a.isNew = false;
+      }, 2000);
+    }
+    showModal.value = false;
+  } catch (e) {
+    modalError.value = e?.data?.message || e?.message || "Failed to save. Please try again.";
+  } finally {
+    saving.value = false;
+  }
+};
+
+/* ── API: Delete ─────────────────────────────────── */
 const showDeleteModal = ref(false);
 const deleteTarget    = ref(null);
 
-const confirmDelete       = (ann) => { deleteTarget.value = ann; showDeleteModal.value = true; };
-const deleteAnnouncement  = () => {
-  announcements.value = announcements.value.filter(a => a.id !== deleteTarget.value.id);
-  showDeleteModal.value = false;
+const confirmDelete = (ann) => {
+  deleteTarget.value    = ann;
+  showDeleteModal.value = true;
+};
+
+const deleteAnnouncement = async () => {
+  deleting.value = true;
+  try {
+    await $fetch(`${API_BASE}/${deleteTarget.value.id}`, { method: "DELETE" });
+    announcements.value   = announcements.value.filter(a => a.id !== deleteTarget.value.id);
+    showDeleteModal.value = false;
+  } catch (e) {
+    console.error("Delete failed:", e);
+  } finally {
+    deleting.value = false;
+  }
 };
 </script>
 
@@ -452,6 +587,28 @@ const deleteAnnouncement  = () => {
 .filter-chip:hover { border-color: #0369a1; color: #0369a1; }
 .filter-chip.active { border-color: #0369a1; background: #eff6ff; color: #0369a1; font-weight: 600; }
 
+/* ── Loading ─────────────────────────────────────── */
+.loading-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 70px 20px; color: #94a3b8; font-size: 0.875rem;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0369a1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error ───────────────────────────────────────── */
+.error-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 60px 20px; text-align: center;
+}
+.error-title { font-family: "DM Serif Display", serif; font-size: 1.1rem; color: #334155; margin: 0; }
+.error-sub   { font-size: 0.82rem; color: #94a3b8; margin: 0 0 6px; }
+
 /* ── Cards grid ──────────────────────────────────── */
 .cards-grid {
   display: grid;
@@ -492,35 +649,38 @@ const deleteAnnouncement  = () => {
   100% { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 }
 
-/* Status badge */
+/* Card header */
+.card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px;
+}
+.card-header-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;
+}
+
+/* Status badge — now in normal flow, no absolute positioning */
 .status-badge {
-  position: absolute; top: 14px; right: 14px;
-  display: flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 4px;
   font-size: 0.65rem; font-weight: 700;
   padding: 2px 8px; border-radius: 20px;
   letter-spacing: 0.04em; text-transform: uppercase;
+  white-space: nowrap;
 }
 .status-badge.ongoing      { background: #fefce8; color: #a16207; }
 .status-badge.accomplished { background: #dcfce7; color: #15803d; }
 
-/* Card header */
-.card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px;
-}
+.card-date { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
+
 .recipient-tag {
   display: inline-flex; align-items: center;
   padding: 3px 10px; border-radius: 20px;
   font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em;
   background: #eff6ff; color: #0369a1; border: 1px solid #bae6fd;
 }
-.recipient-tag.all-members   { background: #eff6ff; color: #0369a1; border-color: #bae6fd; }
-.recipient-tag.lectors        { background: #fdf4ff; color: #7e22ce; border-color: #e9d5ff; }
-.recipient-tag.commentators   { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-.recipient-tag.coordinators   { background: #fefce8; color: #a16207; border-color: #fde68a; }
-.recipient-tag.administrators { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-
-.card-date { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; margin-right: 110px; }
+.recipient-tag.all-members   { background: #eff6ff; color: #0369a1;  border-color: #bae6fd; }
+.recipient-tag.officers       { background: #fdf4ff; color: #7e22ce;  border-color: #e9d5ff; }
+.recipient-tag.new-testament  { background: #f0fdf4; color: #15803d;  border-color: #bbf7d0; }
+.recipient-tag.old-testament  { background: #fefce8; color: #a16207;  border-color: #fde68a; }
 
 /* Title & body */
 .card-title {
@@ -558,8 +718,9 @@ const deleteAnnouncement  = () => {
   cursor: pointer; display: flex; align-items: center;
   justify-content: center; color: #94a3b8; transition: all 0.15s;
 }
-.card-btn.status-btn:hover { border-color: #22c55e; background: #f0fdf4; color: #15803d; }
-.card-btn.edit-btn:hover  { border-color: #0369a1; background: #eff6ff; color: #0369a1; }
+.card-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.card-btn.view-btn:hover   { border-color: #7e22ce; background: #fdf4ff; color: #7e22ce; }
+.card-btn.edit-btn:hover   { border-color: #0369a1; background: #eff6ff; color: #0369a1; }
 .card-btn.delete-btn:hover { border-color: #ef4444; background: #fef2f2; color: #ef4444; }
 
 /* ── Empty state ─────────────────────────────────── */
@@ -667,6 +828,14 @@ const deleteAnnouncement  = () => {
 .toggle-input:checked + .toggle-slider::after { transform: translateX(16px); }
 .toggle-label { font-size: 0.78rem; color: #64748b; white-space: nowrap; }
 
+/* Modal error */
+.modal-error {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 12px; border-radius: 8px;
+  background: #fef2f2; border: 1px solid #fecaca;
+  font-size: 0.8rem; color: #ef4444;
+}
+
 .modal-footer {
   display: flex; align-items: center; justify-content: flex-end;
   gap: 8px; padding: 14px 24px 20px; border-top: 1px solid #f1f5f9;
@@ -679,7 +848,8 @@ const deleteAnnouncement  = () => {
   font-size: 0.875rem; font-weight: 600; color: #475569; cursor: pointer;
   transition: border-color 0.15s;
 }
-.btn-cancel:hover { border-color: #94a3b8; }
+.btn-cancel:hover:not(:disabled) { border-color: #94a3b8; }
+.btn-cancel:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-save {
   display: flex; align-items: center; gap: 4px;
@@ -707,7 +877,89 @@ const deleteAnnouncement  = () => {
   font-family: "DM Sans", sans-serif; font-size: 0.875rem; font-weight: 600;
   cursor: pointer; transition: opacity 0.15s;
 }
-.btn-delete:hover { opacity: 0.88; }
+.btn-delete:hover:not(:disabled) { opacity: 0.88; }
+.btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── View Modal ──────────────────────────────────── */
+.modal-view { max-width: 560px; overflow: hidden; padding: 0; }
+
+.view-band {
+  height: 5px; width: 100%;
+}
+.view-band.band-ongoing  { background: linear-gradient(to right, #f59e0b, #fbbf24); }
+.view-band.band-done     { background: linear-gradient(to right, #15803d, #4ade80); }
+
+.view-header {
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
+}
+.view-header-meta {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;
+}
+
+.view-body {
+  padding: 22px 24px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.view-title {
+  font-family: "DM Serif Display", serif;
+  font-size: 1.35rem; font-weight: 400; color: #0f172a;
+  margin: 0; line-height: 1.35;
+}
+
+.view-meta-row {
+  display: flex; align-items: center; gap: 14px;
+}
+
+.view-author {
+  display: flex; align-items: center; gap: 10px;
+}
+.view-author-info {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.view-author-name {
+  font-size: 0.82rem; font-weight: 600; color: #334155;
+}
+.view-date {
+  font-size: 0.72rem; color: #94a3b8;
+}
+
+.view-divider {
+  height: 1px; background: #f1f5f9; margin: 0;
+}
+
+.view-content {
+  font-size: 0.9rem; color: #374151; line-height: 1.75;
+  margin: 0; white-space: pre-wrap; word-break: break-word;
+}
+
+.view-footer {
+  justify-content: flex-end; gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding: 14px 24px 20px;
+}
+
+.btn-view-edit {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 16px; border: 1.5px solid #e2e8f0; border-radius: 9px;
+  background: white; font-family: "DM Sans", sans-serif;
+  font-size: 0.875rem; font-weight: 600; color: #475569; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-view-edit:hover { border-color: #0369a1; background: #eff6ff; color: #0369a1; }
+
+.btn-toggle-status {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 16px; border: none; border-radius: 9px;
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  color: white; font-family: "DM Sans", sans-serif;
+  font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(21,128,61,0.25); transition: opacity 0.15s;
+}
+.btn-toggle-status:hover:not(:disabled) { opacity: 0.88; }
+.btn-toggle-status:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Transitions ─────────────────────────────────── */
 .modal-enter-active, .modal-leave-active { transition: opacity 0.18s ease; }
