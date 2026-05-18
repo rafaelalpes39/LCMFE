@@ -191,8 +191,8 @@
                     <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="John Leider" />
                   </v-avatar>
                   <div class="profile-chip-info">
-                    <span class="profile-chip-name">John Leider</span>
-                    <span class="profile-chip-role">Lector</span>
+                    <span class="profile-chip-name">{{ auth.user?.name}}</span>
+                    <span class="profile-chip-role">{{ auth.user?.team}}</span>
                   </div>
                   <v-icon size="16" color="#94a3b8" class="ml-1">
                     {{ profileMenu ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -206,8 +206,8 @@
                     <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="John Leider" />
                   </v-avatar>
                   <div class="menu-profile-info">
-                    <div class="menu-profile-name">John Leider</div>
-                    <div class="menu-profile-role">Lector</div>
+                    <div class="menu-profile-name">{{ auth.user?.name}}</div>
+                    <div class="menu-profile-role">{{ auth.user?.team}}</div>
                   </div>
                 </div>
                 <v-divider />
@@ -217,7 +217,7 @@
                 </v-list>
                 <v-divider />
                 <div class="menu-logout-area">
-                  <v-btn block variant="text" color="#ef4444" prepend-icon="mdi-logout" class="logout-btn">
+                  <v-btn block variant="text" color="#ef4444" prepend-icon="mdi-logout" class="logout-btn" @click=logout()>
                     Log Out
                   </v-btn>
                 </div>
@@ -243,6 +243,7 @@
 
           <!-- CONTENT -->
           <v-container fluid class="page-container">
+{{ auth.user }}
             <slot />
           </v-container>
 
@@ -254,8 +255,10 @@
 
 
 <script setup>
+import { useAuthStore } from "~/stores/auth";
 import { ref, computed, onMounted, onUnmounted } from "vue";
-
+const auth = useAuthStore();
+// const {user} = storeToRefs(auth);
 const drawer = ref(true);
 const rail = ref(true);
 const profileMenu = ref(false);
@@ -275,7 +278,10 @@ function onResize() {
     rail.value = true;
   }
 }
-
+const logout = ()=>{
+  console.log('log-out')
+  auth.logout()
+}
 onMounted(() => { window.addEventListener("resize", onResize); onResize(); });
 onUnmounted(() => { window.removeEventListener("resize", onResize); });
 

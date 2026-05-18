@@ -13,9 +13,9 @@
         <div class="hero-left">
           <div class="avatar-wrap">
             <div class="avatar-ring" :class="statusClass">
-              <img v-if="member.photo" :src="member.photo" class="avatar-img" alt="profile photo" />
-              <div v-else class="avatar-initials" :style="{ background: avatarColor(member.name) }">
-                {{ initials(member.name) }}
+              <img v-if="user?.profile" :src="user.profile" class="avatar-img" alt="profile photo" />
+              <div v-else class="avatar-initials" :style="{ background: avatarColor(user?.name) }">
+                {{ initials(user?.name) }}
               </div>
             </div>
             <label class="avatar-edit-btn" title="Change photo">
@@ -26,21 +26,24 @@
 
           <div class="hero-identity">
             <div class="hero-name-row">
-              <h1 class="hero-name">{{ member.name }}</h1>
+              <h1 class="hero-name">{{ user?.name ?? '—' }}</h1>
               <span class="status-badge" :class="statusClass">
-                <span class="status-dot" />{{ member.status }}
+                <span class="status-dot" />{{ user?.status ?? '—' }}
               </span>
             </div>
             <div class="hero-meta">
-              <span class="hero-role-badge" :class="member.role.toLowerCase()">{{ member.role }}</span>
+              <span class="hero-role-badge" :class="(user?.role ?? '').toLowerCase()">
+                {{ user?.role ?? '—' }}
+              </span>
               <span class="hero-sep">·</span>
               <span class="hero-id">
-                <v-icon size="12" class="mr-1" color="#94a3b8">mdi-identifier</v-icon>{{ member.memberId }}
+                <v-icon size="12" class="mr-1" color="#94a3b8">mdi-identifier</v-icon>
+                {{ user?.membership_id ?? 'N/A' }}
               </span>
             </div>
             <p class="hero-parish">
-              <v-icon size="13" class="mr-1" color="#7dd3fc">mdi-church</v-icon>
-              {{ member.parish }}
+              <v-icon size="13" class="mr-1" color="#7dd3fc">mdi-account-group</v-icon>
+              Team: {{ user?.team ?? '—' }}
             </p>
           </div>
         </div>
@@ -48,7 +51,7 @@
         <!-- Right: Quick stats strip -->
         <div class="hero-right">
           <div class="stat-pill">
-            <span class="stat-val">{{ member.yearsOfService }}</span>
+            <span class="stat-val">{{ yearsOfService }}</span>
             <span class="stat-lbl">yrs service</span>
           </div>
           <div class="stat-divider" />
@@ -58,7 +61,7 @@
           </div>
           <div class="stat-divider" />
           <div class="stat-pill">
-            <span class="stat-val">{{ member.totalMasses }}</span>
+            <span class="stat-val">{{ totalMasses }}</span>
             <span class="stat-lbl">masses served</span>
           </div>
         </div>
@@ -90,38 +93,43 @@
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-account</v-icon>Full Name
               </span>
-              <span class="info-val">{{ member.name }}</span>
+              <span class="info-val">{{ user?.name ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-email-outline</v-icon>Email
               </span>
-              <a :href="`mailto:${member.email}`" class="info-val link">{{ member.email }}</a>
+              <a v-if="user?.email" :href="`mailto:${user.email}`" class="info-val link">
+                {{ user.email }}
+              </a>
+              <span v-else class="info-val">—</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-phone-outline</v-icon>Phone
               </span>
-              <span class="info-val">{{ member.phone }}</span>
+              <span class="info-val">{{ user?.cp_number ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
-                <v-icon size="14" color="#94a3b8" class="mr-2">mdi-church</v-icon>Parish
+                <v-icon size="14" color="#94a3b8" class="mr-2">mdi-account-group</v-icon>Team
               </span>
-              <span class="info-val">{{ member.parish }}</span>
+              <span class="info-val">{{ user?.team ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-shield-account-outline</v-icon>Role
               </span>
-              <span class="role-badge" :class="member.role.toLowerCase()">{{ member.role }}</span>
+              <span class="role-badge" :class="(user?.role ?? '').toLowerCase()">
+                {{ user?.role ?? '—' }}
+              </span>
             </div>
             <div class="info-row last">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-circle-outline</v-icon>Status
               </span>
               <span class="status-badge sm" :class="statusClass">
-                <span class="status-dot" />{{ member.status }}
+                <span class="status-dot" />{{ user?.status ?? '—' }}
               </span>
             </div>
           </div>
@@ -142,15 +150,22 @@
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-calendar-plus</v-icon>Date Joined
               </span>
-              <span class="info-val">{{ fmtDate(member.dateJoined) }}</span>
+              <span class="info-val">{{ user?.joined_date ? fmtDate(user.joined_date) : '—' }}</span>
             </div>
             <div class="info-row last">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-calendar-refresh</v-icon>Renewal Date
               </span>
-              <span class="info-val" :class="{ 'text-warn': daysUntilRenewal <= 30, 'text-danger': daysUntilRenewal <= 7 }">
-                {{ fmtDate(member.renewalDate) }}
-                <span v-if="daysUntilRenewal <= 60" class="days-left-tag" :class="renewalUrgency">
+              <span
+                class="info-val"
+                :class="{ 'text-warn': daysUntilRenewal <= 30, 'text-danger': daysUntilRenewal <= 7 }"
+              >
+                {{ user?.membership_expiration ? fmtDate(user.membership_expiration) : '—' }}
+                <span
+                  v-if="user?.membership_expiration && daysUntilRenewal <= 60"
+                  class="days-left-tag"
+                  :class="renewalUrgency"
+                >
                   {{ daysUntilRenewal }}d left
                 </span>
               </span>
@@ -175,17 +190,26 @@
             <div>
               <p class="renewal-title">Membership Status</p>
               <p class="renewal-status-label" :class="renewalUrgency">
-                {{ renewalUrgency === 'ok' ? 'In good standing' : renewalUrgency === 'warn' ? 'Renewal coming up' : renewalUrgency === 'urgent' ? 'Renewal urgent!' : 'Membership expired' }}
+                {{
+                  renewalUrgency === 'ok'      ? 'In good standing'   :
+                  renewalUrgency === 'warn'    ? 'Renewal coming up'  :
+                  renewalUrgency === 'urgent'  ? 'Renewal urgent!'    : 'Membership expired'
+                }}
               </p>
             </div>
           </div>
+         
           <div class="renewal-progress-wrap">
             <div class="renewal-progress-track">
-              <div class="renewal-progress-bar" :class="renewalUrgency" :style="{ width: renewalProgressPct + '%' }" />
+              <div
+                class="renewal-progress-bar"
+                :class="renewalUrgency"
+                :style="{ width: renewalProgressPct + '%' }"
+              />
             </div>
             <div class="renewal-progress-labels">
-              <span>{{ fmtDate(member.dateJoined) }}</span>
-              <span>{{ fmtDate(member.renewalDate) }}</span>
+              <span>{{ user?.joined_date ? fmtDate(user.joined_date) : '—' }}</span>
+              <span>{{ user?.membership_expiration ? fmtDate(user.membership_expiration) : '—' }}</span>
             </div>
           </div>
           <div class="renewal-footer">
@@ -197,9 +221,6 @@
                 {{ daysUntilRenewal > 0 ? 'days until renewal' : 'days overdue' }}
               </span>
             </div>
-            <button v-if="renewalUrgency !== 'ok'" class="renewal-action-btn" :class="renewalUrgency">
-              Renew Now
-            </button>
           </div>
         </div>
 
@@ -214,12 +235,9 @@
             </div>
           </div>
           <div class="attendance-body">
-            <!-- SVG donut -->
             <div class="donut-wrap">
               <svg viewBox="0 0 120 120" class="donut-svg">
-                <!-- Track -->
                 <circle cx="60" cy="60" r="48" fill="none" stroke="#f1f5f9" stroke-width="12" />
-                <!-- Present arc -->
                 <circle
                   cx="60" cy="60" r="48" fill="none"
                   stroke="#0369a1" stroke-width="12"
@@ -229,7 +247,6 @@
                   transform="rotate(-90 60 60)"
                   style="transition: stroke-dasharray 0.8s ease;"
                 />
-                <!-- Absent arc -->
                 <circle
                   cx="60" cy="60" r="48" fill="none"
                   stroke="#fca5a5" stroke-width="12"
@@ -243,12 +260,11 @@
                 <text x="60" y="70" text-anchor="middle" class="donut-center-lbl">present</text>
               </svg>
             </div>
-            <!-- Legend -->
             <div class="att-legend">
               <div class="att-leg-item">
                 <div class="att-leg-dot" style="background:#0369a1" />
                 <div>
-                  <p class="att-leg-val">{{ member.attendanceStats.present }}</p>
+                  <p class="att-leg-val">{{ attendanceStats.present }}</p>
                   <p class="att-leg-lbl">Present</p>
                 </div>
               </div>
@@ -256,7 +272,7 @@
               <div class="att-leg-item">
                 <div class="att-leg-dot" style="background:#fca5a5" />
                 <div>
-                  <p class="att-leg-val">{{ member.attendanceStats.absent }}</p>
+                  <p class="att-leg-val">{{ attendanceStats.absent }}</p>
                   <p class="att-leg-lbl">Absent</p>
                 </div>
               </div>
@@ -264,7 +280,7 @@
               <div class="att-leg-item">
                 <div class="att-leg-dot" style="background:#e2e8f0" />
                 <div>
-                  <p class="att-leg-val">{{ member.totalMasses }}</p>
+                  <p class="att-leg-val">{{ totalMasses }}</p>
                   <p class="att-leg-lbl">Total</p>
                 </div>
               </div>
@@ -277,28 +293,30 @@
           <div class="id-card-bg" />
           <div class="id-card-body">
             <div class="id-card-top">
-              <div class="id-avatar" :style="{ background: avatarColor(member.name) }">
-                <img v-if="member.photo" :src="member.photo" class="id-avatar-img" alt="" />
-                <span v-else class="id-avatar-initials">{{ initials(member.name) }}</span>
+              <div class="id-avatar" :style="{ background: avatarColor(user?.name) }">
+                <img v-if="user?.profile" :src="user.profile" class="id-avatar-img" alt="" />
+                <span v-else class="id-avatar-initials">{{ initials(user?.name) }}</span>
               </div>
               <div>
-                <p class="id-card-name">{{ member.name }}</p>
-                <p class="id-card-role">{{ member.role }}</p>
+                <p class="id-card-name">{{ user?.name ?? '—' }}</p>
+                <p class="id-card-role">{{ user?.role ?? '—' }}</p>
               </div>
             </div>
             <div class="id-card-divider" />
             <div class="id-card-fields">
               <div class="id-field">
                 <span class="id-field-lbl">Member ID</span>
-                <span class="id-field-val mono">{{ member.memberId }}</span>
+                <span class="id-field-val mono">{{ user?.membership_id ?? 'N/A' }}</span>
               </div>
               <div class="id-field">
                 <span class="id-field-lbl">Since</span>
-                <span class="id-field-val">{{ fmtDateShort(member.dateJoined) }}</span>
+                <span class="id-field-val">
+                  {{ user?.joined_date ? fmtDateShort(user.joined_date) : '—' }}
+                </span>
               </div>
               <div class="id-field">
-                <span class="id-field-lbl">Parish</span>
-                <span class="id-field-val">SJB Parish</span>
+                <span class="id-field-lbl">Team</span>
+                <span class="id-field-val">{{ user?.team ?? '—' }}</span>
               </div>
             </div>
           </div>
@@ -330,7 +348,7 @@
               </div>
               <div class="form-field">
                 <label class="field-label">Phone</label>
-                <input v-model="editForm.phone" class="f-input" />
+                <input v-model="editForm.cp_number" class="f-input" />
               </div>
               <div class="form-field">
                 <label class="field-label">Role</label>
@@ -352,7 +370,7 @@
               </div>
               <div class="form-field">
                 <label class="field-label">Date of Renewal</label>
-                <input v-model="editForm.renewalDate" type="date" class="f-input" />
+                <input v-model="editForm.membership_expiration" type="date" class="f-input" />
               </div>
             </div>
           </div>
@@ -372,106 +390,112 @@
 
 <script setup>
 import { ref, computed } from "vue";
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/stores/auth";
 
 definePageMeta({
   layout: "authenticated",
   middleware: "auth",
 });
 
+const auth = useAuthStore();
+
+// storeToRefs keeps `user` reactive — UI updates instantly when the store changes, no refresh needed
+const { user } = storeToRefs(auth);
+
 /* ── Helpers ─────────────────────────────────────── */
-const palette     = ["#0369a1","#0891b2","#0c4a6e","#0e7490","#075985","#155e75","#164e63"];
-const avatarColor = (name) => palette[(name?.charCodeAt(0) ?? 0) % palette.length];
-const initials    = (name) => (name ?? "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-const fmtDate     = (d) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-const fmtDateShort = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+const palette      = ["#0369a1","#0891b2","#0c4a6e","#0e7490","#075985","#155e75","#164e63"];
+const avatarColor  = (name) => palette[((name ?? "?").charCodeAt(0)) % palette.length];
+const initials     = (name) => (name ?? "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+const fmtDate      = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—";
+const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—";
 
 const roles    = ["Lector", "Commentator", "Coordinator", "Administrator"];
-const statuses = ["Active", "Inactive", "Pending Renewal", "Suspended"];
+const statuses = ["active", "inactive", "pending renewal", "suspended"];
 
-/* ── Member data ─────────────────────────────────── */
-const member = ref({
-  id: 1,
-  name: "Maria Santos",
-  memberId: "SJB-2019-0042",
-  email: "m.santos@sjb.org",
-  phone: "+63 912 345 6789",
-  parish: "St. John the Baptist Parish",
-  role: "Lector",
-  status: "Active",
-  photo: null,
-  dateJoined: "2019-03-15",
-  renewalDate: "2026-05-01",
-  yearsOfService: 7,
-  totalMasses: 214,
-  attendanceStats: { present: 198, absent: 16 },
-});
-
-/* ── Computed ─────────────────────────────────────── */
-const attendanceRate = computed(() => {
-  const { present, absent } = member.value.attendanceStats;
-  return Math.round((present / (present + absent)) * 100);
+/* ── Attendance (placeholder — swap with real API data) ── */
+const attendanceStats = computed(() => ({ present: 0, absent: 0 }));
+const totalMasses     = computed(() => attendanceStats.value.present + attendanceStats.value.absent);
+const attendanceRate  = computed(() => {
+  const { present, absent } = attendanceStats.value;
+  const total = present + absent;
+  return total > 0 ? Math.round((present / total) * 100) : 0;
 });
 const absentRate = computed(() => 100 - attendanceRate.value);
 
-const statusClass = computed(() => ({
-  active:            member.value.status === "Active",
-  inactive:          member.value.status === "Inactive",
-  "pending-renewal": member.value.status === "Pending Renewal",
-  suspended:         member.value.status === "Suspended",
-}));
+/* ── Computed from user (all reactive via storeToRefs) ── */
+const yearsOfService = computed(() => {
+  const joined = user.value?.joined_date;
+  if (!joined) return 0;
+  return Math.floor((Date.now() - new Date(joined)) / (1000 * 60 * 60 * 24 * 365));
+});
+
+const statusClass = computed(() => {
+  const s = (user.value?.status ?? "").toLowerCase().replace(" ", "-");
+  return {
+    active:            s === "active",
+    inactive:          s === "inactive",
+    "pending-renewal": s === "pending-renewal" || s === "pending renewal",
+    suspended:         s === "suspended",
+  };
+});
 
 const daysUntilRenewal = computed(() => {
-  const diff = new Date(member.value.renewalDate) - new Date();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const exp = user.value?.membership_expiration;
+  if (!exp) return 9999;
+  return Math.ceil((new Date(exp) - new Date()) / (1000 * 60 * 60 * 24));
 });
 
 const renewalUrgency = computed(() => {
   const d = daysUntilRenewal.value;
-  if (d < 0)   return "expired";
-  if (d <= 14) return "urgent";
-  if (d <= 60) return "warn";
+  if (d === 9999) return "ok";
+  if (d < 0)      return "expired";
+  if (d <= 14)    return "urgent";
+  if (d <= 60)    return "warn";
   return "ok";
 });
 
 const renewalIconColor = computed(() => ({
-  ok: "#15803d", warn: "#a16207", urgent: "#dc2626", expired: "#991b1b"
+  ok: "#15803d", warn: "#a16207", urgent: "#dc2626", expired: "#ffffff"
 })[renewalUrgency.value]);
 
 const renewalProgressPct = computed(() => {
-  const joined  = new Date(member.value.dateJoined).getTime();
-  const renewal = new Date(member.value.renewalDate).getTime();
-  const now     = Date.now();
-  const pct     = ((now - joined) / (renewal - joined)) * 100;
+  const joined  = user.value?.joined_date;
+  const renewal = user.value?.membership_expiration;
+  if (!joined || !renewal) return 0;
+  const pct = ((Date.now() - new Date(joined)) / (new Date(renewal) - new Date(joined))) * 100;
   return Math.min(Math.max(pct, 0), 100);
 });
 
-/* ── Edit modal ──────────────────────────────────── */
+/* ── Edit modal ── */
 const showEditModal = ref(false);
 const editForm      = ref({});
 
 const openEditModal = () => {
   editForm.value = {
-    name: member.value.name,
-    email: member.value.email,
-    phone: member.value.phone,
-    role: member.value.role,
-    status: member.value.status,
-    renewalDate: member.value.renewalDate,
+    name:                  user.value?.name                  ?? "",
+    email:                 user.value?.email                 ?? "",
+    cp_number:             user.value?.cp_number             ?? "",
+    role:                  user.value?.role                  ?? "",
+    status:                user.value?.status                ?? "",
+    membership_expiration: user.value?.membership_expiration ?? "",
   };
   showEditModal.value = true;
 };
 
 const saveEdit = () => {
-  Object.assign(member.value, editForm.value);
+  if (user.value) {
+    Object.assign(user.value, editForm.value);
+  }
   showEditModal.value = false;
 };
 
-/* ── Photo upload ────────────────────────────────── */
+/* ── Photo upload ── */
 const onPhotoChange = (e) => {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file || !user.value) return;
   const reader = new FileReader();
-  reader.onload = (ev) => { member.value.photo = ev.target.result; };
+  reader.onload = (ev) => { user.value.profile = ev.target.result; };
   reader.readAsDataURL(file);
 };
 </script>
@@ -699,7 +723,7 @@ const onPhotoChange = (e) => {
 .renewal-card.ok      { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-color: #bbf7d0; }
 .renewal-card.warn    { background: linear-gradient(135deg, #fefce8, #fef9c3); border-color: #fde68a; }
 .renewal-card.urgent  { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #fecaca; }
-.renewal-card.expired { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #ef4444; }
+.renewal-card.expired { background: linear-gradient(135deg, #dc2626, #b91c1c); border-color: #991b1b; }
 
 .renewal-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .renewal-icon-wrap {
@@ -709,14 +733,15 @@ const onPhotoChange = (e) => {
 .renewal-icon-wrap.ok      { background: rgba(34,197,94,0.15); }
 .renewal-icon-wrap.warn    { background: rgba(234,179,8,0.15); }
 .renewal-icon-wrap.urgent  { background: rgba(239,68,68,0.15); }
-.renewal-icon-wrap.expired { background: rgba(239,68,68,0.2); }
+.renewal-icon-wrap.expired { background: rgba(255,255,255,0.2); }
 
 .renewal-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin: 0 0 2px; }
+.renewal-card.expired .renewal-title { color: rgba(255,255,255,0.75); }
 .renewal-status-label { font-size: 0.88rem; font-weight: 700; margin: 0; }
 .renewal-status-label.ok      { color: #15803d; }
 .renewal-status-label.warn    { color: #a16207; }
 .renewal-status-label.urgent  { color: #dc2626; }
-.renewal-status-label.expired { color: #991b1b; }
+.renewal-status-label.expired { color: #ffffff; }
 
 .renewal-progress-wrap { margin-bottom: 14px; }
 .renewal-progress-track {
@@ -728,11 +753,12 @@ const onPhotoChange = (e) => {
 .renewal-progress-bar.ok      { background: #22c55e; }
 .renewal-progress-bar.warn    { background: #eab308; }
 .renewal-progress-bar.urgent  { background: #ef4444; }
-.renewal-progress-bar.expired { background: #ef4444; }
+.renewal-progress-bar.expired { background: rgba(255,255,255,0.5); }
 .renewal-progress-labels {
   display: flex; justify-content: space-between;
   font-size: 0.62rem; color: #94a3b8;
 }
+.renewal-card.expired .renewal-progress-labels { color: rgba(255,255,255,0.65); }
 
 .renewal-footer { display: flex; align-items: center; justify-content: space-between; }
 .renewal-days-block { display: flex; align-items: baseline; gap: 5px; }
@@ -740,18 +766,9 @@ const onPhotoChange = (e) => {
 .renewal-days-num.ok      { color: #15803d; }
 .renewal-days-num.warn    { color: #a16207; }
 .renewal-days-num.urgent  { color: #dc2626; }
-.renewal-days-num.expired { color: #991b1b; }
+.renewal-days-num.expired { color: #ffffff; }
 .renewal-days-lbl { font-size: 0.72rem; color: #64748b; font-weight: 500; }
-
-.renewal-action-btn {
-  padding: 7px 16px; border: none; border-radius: 9px;
-  font-family: "DM Sans", sans-serif; font-size: 0.78rem; font-weight: 700;
-  cursor: pointer; transition: opacity 0.15s;
-}
-.renewal-action-btn.warn   { background: #eab308; color: white; box-shadow: 0 3px 10px rgba(234,179,8,0.3); }
-.renewal-action-btn.urgent { background: #ef4444; color: white; box-shadow: 0 3px 10px rgba(239,68,68,0.3); }
-.renewal-action-btn.expired{ background: #ef4444; color: white; box-shadow: 0 3px 10px rgba(239,68,68,0.3); }
-.renewal-action-btn:hover  { opacity: 0.88; }
+.renewal-card.expired .renewal-days-lbl { color: rgba(255,255,255,0.8); }
 
 /* ══ ATTENDANCE DONUT ══ */
 .attendance-body {

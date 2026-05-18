@@ -1,14 +1,9 @@
 <template>
   <div class="login-page">
-
     <!-- LEFT PANEL — artwork -->
     <div class="art-panel">
       <div class="art-overlay" />
-      <v-img
-        class="art-image"
-        src="/images/logo.png"
-        alt="Saint John Bosco"
-      />
+      <v-img class="art-image" src="/images/logo.png" alt="Saint John Bosco" />
       <div class="art-caption">
         <div class="art-caption-title">Saint John Bosco</div>
         <div class="art-caption-sub">Patron of the Ministry</div>
@@ -18,11 +13,9 @@
     <!-- RIGHT PANEL — login form -->
     <div class="form-panel">
       <div class="form-inner">
-
         <!-- Logo + Heading -->
         <div class="form-heading">
-
-              <div class="logo-img-wrap">
+          <div class="logo-img-wrap">
             <img
               src=""
               alt="Lectors & Commentators Ministry Logo"
@@ -36,7 +29,9 @@
             </div>
             <div class="logo-text">
               <div class="logo-name">Lectors &amp; Commentators Ministry</div>
-              <div class="logo-sub">Saint John Bosco Parish · Tondo, Manila</div>
+              <div class="logo-sub">
+                Saint John Bosco Parish · Tondo, Manila
+              </div>
             </div>
           </div>
 
@@ -46,12 +41,23 @@
 
         <!-- Form -->
         <form class="form" @submit.prevent="handleLogin">
-
           <div class="field">
             <label class="label">Email address</label>
             <div class="input-wrap">
               <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                  />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
               </span>
               <input
                 v-model="form.email"
@@ -70,7 +76,17 @@
             </div>
             <div class="input-wrap">
               <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
               </span>
               <input
                 v-model="form.password"
@@ -79,9 +95,37 @@
                 placeholder="••••••••"
                 autocomplete="current-password"
               />
-              <button type="button" class="eye-btn" @click="showPassword = !showPassword">
-                <svg v-if="!showPassword" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              <button
+                type="button"
+                class="eye-btn"
+                @click="showPassword = !showPassword"
+              >
+                <svg
+                  v-if="!showPassword"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg
+                  v-else
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
               </button>
             </div>
           </div>
@@ -93,11 +137,14 @@
             </label>
           </div>
 
-          <button type="submit" class="submit-btn" :class="{ loading: isLoading }">
+          <button
+            type="submit"
+            class="submit-btn"
+            :class="{ loading: isLoading }"
+          >
             <span v-if="!isLoading">Sign in</span>
             <span v-else class="spinner" />
           </button>
-
         </form>
 
         <!-- Footer -->
@@ -105,26 +152,42 @@
           Having trouble? Contact your
           <a href="#" class="footer-link">parish administrator</a>
         </p>
-
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref } from "vue";
-
+import { useAuthStore } from "~/stores/auth";
+definePageMeta({
+  middleware: "guest",
+});
+const auth = useAuthStore();
+const {} = storeToRefs(auth);
+// const { login, logout } = auth
 const form = ref({ email: "", password: "", remember: false });
 const showPassword = ref(false);
 const isLoading = ref(false);
 
-async function handleLogin() {
-  isLoading.value = true;
-  await new Promise(r => setTimeout(r, 1500));
-  isLoading.value = false;
-  // router.push("/") — add your redirect here
-}
+// async function handleLogin() {
+//   isLoading.value = true;
+//   await new Promise(r => setTimeout(r, 1500));
+//   isLoading.value = false;
+//   // router.push("/") — add your redirect here
+// }
+
+const handleLogin = async () => {
+  try {
+    isLoading.value = true;
+    await auth.login(form.value);
+    isLoading.value = false;
+    navigateTo("/dashboard");
+  } catch (error) {
+    console.log(error);
+    navigateTo("/");
+  }
+};
 </script>
 
 <style>
@@ -133,8 +196,11 @@ async function handleLogin() {
 
 <style scoped>
 /* ── Reset / Base ─────────────────────────────── */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 .logo-img-wrap {
   display: flex;
@@ -167,7 +233,11 @@ async function handleLogin() {
   overflow: hidden;
   display: none;
 }
-@media (min-width: 900px) { .art-panel { display: block; } }
+@media (min-width: 900px) {
+  .art-panel {
+    display: block;
+  }
+}
 
 .art-image {
   width: 100%;
@@ -183,7 +253,7 @@ async function handleLogin() {
   background: linear-gradient(
     to bottom,
     rgba(12, 74, 110, 0.18) 0%,
-    rgba(12, 74, 110, 0.0) 40%,
+    rgba(12, 74, 110, 0) 40%,
     rgba(12, 74, 110, 0.55) 100%
   );
   z-index: 1;
@@ -201,12 +271,12 @@ async function handleLogin() {
   font-size: 1.5rem;
   font-weight: 600;
   color: white;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   line-height: 1.2;
 }
 .art-caption-sub {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255, 255, 255, 0.75);
   margin-top: 4px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -348,9 +418,14 @@ async function handleLogin() {
   color: #0f172a;
   background: #f8fafc;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
 }
-.input::placeholder { color: #cbd5e1; }
+.input::placeholder {
+  color: #cbd5e1;
+}
 .input:focus {
   border-color: #0369a1;
   background: white;
@@ -369,7 +444,9 @@ async function handleLogin() {
   padding: 4px;
   transition: color 0.15s;
 }
-.eye-btn:hover { color: #0369a1; }
+.eye-btn:hover {
+  color: #0369a1;
+}
 
 .forgot-link {
   font-size: 0.78rem;
@@ -378,10 +455,14 @@ async function handleLogin() {
   font-weight: 500;
   transition: color 0.15s;
 }
-.forgot-link:hover { color: #0c4a6e; }
+.forgot-link:hover {
+  color: #0c4a6e;
+}
 
 /* ── Remember ─────────────────────────────────── */
-.remember-row { margin-top: -4px; }
+.remember-row {
+  margin-top: -4px;
+}
 .remember {
   display: flex;
   align-items: center;
@@ -411,7 +492,10 @@ async function handleLogin() {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.1s,
+    box-shadow 0.15s;
   letter-spacing: 0.01em;
   box-shadow: 0 4px 14px rgba(3, 105, 161, 0.35);
   display: flex;
@@ -425,20 +509,29 @@ async function handleLogin() {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(3, 105, 161, 0.4);
 }
-.submit-btn:active:not(.loading) { transform: translateY(0); }
-.submit-btn.loading { opacity: 0.75; cursor: not-allowed; }
+.submit-btn:active:not(.loading) {
+  transform: translateY(0);
+}
+.submit-btn.loading {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
 
 /* ── Spinner ──────────────────────────────────── */
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2.5px solid rgba(255,255,255,0.3);
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* ── Footer ───────────────────────────────────── */
 .form-footer {
@@ -452,7 +545,9 @@ async function handleLogin() {
   text-decoration: none;
   font-weight: 500;
 }
-.footer-link:hover { text-decoration: underline; }
+.footer-link:hover {
+  text-decoration: underline;
+}
 
 /* ── Mobile ───────────────────────────────────── */
 @media (max-width: 899px) {
@@ -463,7 +558,9 @@ async function handleLogin() {
   .login-page::before {
     content: "";
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 4px;
     background: linear-gradient(to right, #0c4a6e, #38bdf8);
     z-index: 10;
