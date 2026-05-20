@@ -13,9 +13,9 @@
         <div class="hero-left">
           <div class="avatar-wrap">
             <div class="avatar-ring" :class="statusClass">
-              <img v-if="user?.profile" :src="user.profile" class="avatar-img" alt="profile photo" />
-              <div v-else class="avatar-initials" :style="{ background: avatarColor(user?.name) }">
-                {{ initials(user?.name) }}
+              <img v-if="user?.user.profile" :src="user.user.profile" class="avatar-img" alt="profile photo" />
+              <div v-else class="avatar-initials" :style="{ background: avatarColor(user?.user.name) }">
+                {{ initials(user?.user.name) }}
               </div>
             </div>
             <label class="avatar-edit-btn" title="Change photo">
@@ -26,24 +26,24 @@
 
           <div class="hero-identity">
             <div class="hero-name-row">
-              <h1 class="hero-name">{{ user?.name ?? '—' }}</h1>
+              <h1 class="hero-name">{{ user?.user.name ?? '—' }}</h1>
               <span class="status-badge" :class="statusClass">
-                <span class="status-dot" />{{ user?.status ?? '—' }}
+                <span class="status-dot" />{{ user?.user.status ?? '—' }}
               </span>
             </div>
             <div class="hero-meta">
-              <span class="hero-role-badge" :class="(user?.role ?? '').toLowerCase()">
-                {{ user?.role ?? '—' }}
+              <span class="hero-role-badge" :class="(user?.user.role ?? '').toLowerCase()">
+                {{ user?.user.role ?? '—' }}
               </span>
               <span class="hero-sep">·</span>
               <span class="hero-id">
                 <v-icon size="12" class="mr-1" color="#94a3b8">mdi-identifier</v-icon>
-                {{ user?.membership_id ?? 'N/A' }}
+                {{ user?.user.membership_id ?? 'N/A' }}
               </span>
             </div>
             <p class="hero-parish">
               <v-icon size="13" class="mr-1" color="#7dd3fc">mdi-account-group</v-icon>
-              Team: {{ user?.team ?? '—' }}
+              Team: {{ user?.user.team ?? '—' }}
             </p>
           </div>
         </div>
@@ -93,14 +93,14 @@
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-account</v-icon>Full Name
               </span>
-              <span class="info-val">{{ user?.name ?? '—' }}</span>
+              <span class="info-val">{{ user?.user.name ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-email-outline</v-icon>Email
               </span>
-              <a v-if="user?.email" :href="`mailto:${user.email}`" class="info-val link">
-                {{ user.email }}
+              <a v-if="user?.user.email" :href="`mailto:${user.user.email}`" class="info-val link">
+                {{ user?.user.email }}
               </a>
               <span v-else class="info-val">—</span>
             </div>
@@ -108,20 +108,20 @@
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-phone-outline</v-icon>Phone
               </span>
-              <span class="info-val">{{ user?.cp_number ?? '—' }}</span>
+              <span class="info-val">{{ user?.user.cp_number ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-account-group</v-icon>Team
               </span>
-              <span class="info-val">{{ user?.team ?? '—' }}</span>
+              <span class="info-val">{{ user?.user.team ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-shield-account-outline</v-icon>Role
               </span>
-              <span class="role-badge" :class="(user?.role ?? '').toLowerCase()">
-                {{ user?.role ?? '—' }}
+              <span class="role-badge" :class="(user?.user.role ?? '').toLowerCase()">
+                {{ user?.user.role ?? '—' }}
               </span>
             </div>
             <div class="info-row last">
@@ -129,7 +129,7 @@
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-circle-outline</v-icon>Status
               </span>
               <span class="status-badge sm" :class="statusClass">
-                <span class="status-dot" />{{ user?.status ?? '—' }}
+                <span class="status-dot" />{{ user?.user.status ?? '—' }}
               </span>
             </div>
           </div>
@@ -150,7 +150,7 @@
               <span class="info-label">
                 <v-icon size="14" color="#94a3b8" class="mr-2">mdi-calendar-plus</v-icon>Date Joined
               </span>
-              <span class="info-val">{{ user?.joined_date ? fmtDate(user.joined_date) : '—' }}</span>
+              <span class="info-val">{{ user?.user.joined_date ? fmtDate(user.user.joined_date) : '—' }}</span>
             </div>
             <div class="info-row last">
               <span class="info-label">
@@ -160,9 +160,9 @@
                 class="info-val"
                 :class="{ 'text-warn': daysUntilRenewal <= 30, 'text-danger': daysUntilRenewal <= 7 }"
               >
-                {{ user?.membership_expiration ? fmtDate(user.membership_expiration) : '—' }}
+                {{ user?.user.membership_expiration ? fmtDate(user.user.membership_expiration) : '—' }}
                 <span
-                  v-if="user?.membership_expiration && daysUntilRenewal <= 60"
+                  v-if="user?.user.membership_expiration && daysUntilRenewal <= 60"
                   class="days-left-tag"
                   :class="renewalUrgency"
                 >
@@ -198,7 +198,7 @@
               </p>
             </div>
           </div>
-         
+
           <div class="renewal-progress-wrap">
             <div class="renewal-progress-track">
               <div
@@ -208,8 +208,8 @@
               />
             </div>
             <div class="renewal-progress-labels">
-              <span>{{ user?.joined_date ? fmtDate(user.joined_date) : '—' }}</span>
-              <span>{{ user?.membership_expiration ? fmtDate(user.membership_expiration) : '—' }}</span>
+              <span>{{ user?.user.joined_date ? fmtDate(user.user.joined_date) : '—' }}</span>
+              <span>{{ user?.user.membership_expiration ? fmtDate(user.user.membership_expiration) : '—' }}</span>
             </div>
           </div>
           <div class="renewal-footer">
@@ -293,30 +293,30 @@
           <div class="id-card-bg" />
           <div class="id-card-body">
             <div class="id-card-top">
-              <div class="id-avatar" :style="{ background: avatarColor(user?.name) }">
-                <img v-if="user?.profile" :src="user.profile" class="id-avatar-img" alt="" />
-                <span v-else class="id-avatar-initials">{{ initials(user?.name) }}</span>
+              <div class="id-avatar" :style="{ background: avatarColor(user?.user.name) }">
+                <img v-if="user?.user.profile" :src="user.user.profile" class="id-avatar-img" alt="" />
+                <span v-else class="id-avatar-initials">{{ initials(user?.user.name) }}</span>
               </div>
               <div>
-                <p class="id-card-name">{{ user?.name ?? '—' }}</p>
-                <p class="id-card-role">{{ user?.role ?? '—' }}</p>
+                <p class="id-card-name">{{ user?.user.name ?? '—' }}</p>
+                <p class="id-card-role">{{ user?.user.role ?? '—' }}</p>
               </div>
             </div>
             <div class="id-card-divider" />
             <div class="id-card-fields">
               <div class="id-field">
                 <span class="id-field-lbl">Member ID</span>
-                <span class="id-field-val mono">{{ user?.membership_id ?? 'N/A' }}</span>
+                <span class="id-field-val mono">{{ user?.user.membership_id ?? 'N/A' }}</span>
               </div>
               <div class="id-field">
                 <span class="id-field-lbl">Since</span>
                 <span class="id-field-val">
-                  {{ user?.joined_date ? fmtDateShort(user.joined_date) : '—' }}
+                  {{ user?.user.joined_date ? fmtDateShort(user.user.joined_date) : '—' }}
                 </span>
               </div>
               <div class="id-field">
                 <span class="id-field-lbl">Team</span>
-                <span class="id-field-val">{{ user?.team ?? '—' }}</span>
+                <span class="id-field-val">{{ user?.user.team ?? '—' }}</span>
               </div>
             </div>
           </div>
@@ -400,7 +400,7 @@ definePageMeta({
 
 const auth = useAuthStore();
 
-// storeToRefs keeps `user` reactive — UI updates instantly when the store changes, no refresh needed
+// user = auth.user, so user.value.user is the actual user object from the backend
 const { user } = storeToRefs(auth);
 
 /* ── Helpers ─────────────────────────────────────── */
@@ -423,15 +423,15 @@ const attendanceRate  = computed(() => {
 });
 const absentRate = computed(() => 100 - attendanceRate.value);
 
-/* ── Computed from user (all reactive via storeToRefs) ── */
+/* ── Computed from user.user (the nested backend object) ── */
 const yearsOfService = computed(() => {
-  const joined = user.value?.joined_date;
+  const joined = user.value?.user.joined_date;
   if (!joined) return 0;
   return Math.floor((Date.now() - new Date(joined)) / (1000 * 60 * 60 * 24 * 365));
 });
 
 const statusClass = computed(() => {
-  const s = (user.value?.status ?? "").toLowerCase().replace(" ", "-");
+  const s = (user.value?.user.status ?? "").toLowerCase().replace(" ", "-");
   return {
     active:            s === "active",
     inactive:          s === "inactive",
@@ -441,7 +441,7 @@ const statusClass = computed(() => {
 });
 
 const daysUntilRenewal = computed(() => {
-  const exp = user.value?.membership_expiration;
+  const exp = user.value?.user.membership_expiration;
   if (!exp) return 9999;
   return Math.ceil((new Date(exp) - new Date()) / (1000 * 60 * 60 * 24));
 });
@@ -460,8 +460,8 @@ const renewalIconColor = computed(() => ({
 })[renewalUrgency.value]);
 
 const renewalProgressPct = computed(() => {
-  const joined  = user.value?.joined_date;
-  const renewal = user.value?.membership_expiration;
+  const joined  = user.value?.user.joined_date;
+  const renewal = user.value?.user.membership_expiration;
   if (!joined || !renewal) return 0;
   const pct = ((Date.now() - new Date(joined)) / (new Date(renewal) - new Date(joined))) * 100;
   return Math.min(Math.max(pct, 0), 100);
@@ -473,19 +473,19 @@ const editForm      = ref({});
 
 const openEditModal = () => {
   editForm.value = {
-    name:                  user.value?.name                  ?? "",
-    email:                 user.value?.email                 ?? "",
-    cp_number:             user.value?.cp_number             ?? "",
-    role:                  user.value?.role                  ?? "",
-    status:                user.value?.status                ?? "",
-    membership_expiration: user.value?.membership_expiration ?? "",
+    name:                  user.value?.user.name                  ?? "",
+    email:                 user.value?.user.email                 ?? "",
+    cp_number:             user.value?.user.cp_number             ?? "",
+    role:                  user.value?.user.role                  ?? "",
+    status:                user.value?.user.status                ?? "",
+    membership_expiration: user.value?.user.membership_expiration ?? "",
   };
   showEditModal.value = true;
 };
 
 const saveEdit = () => {
-  if (user.value) {
-    Object.assign(user.value, editForm.value);
+  if (user.value?.user) {
+    Object.assign(user.value.user, editForm.value);
   }
   showEditModal.value = false;
 };
@@ -493,9 +493,9 @@ const saveEdit = () => {
 /* ── Photo upload ── */
 const onPhotoChange = (e) => {
   const file = e.target.files[0];
-  if (!file || !user.value) return;
+  if (!file || !user.value?.user) return;
   const reader = new FileReader();
-  reader.onload = (ev) => { user.value.profile = ev.target.result; };
+  reader.onload = (ev) => { user.value.user.profile = ev.target.result; };
   reader.readAsDataURL(file);
 };
 </script>

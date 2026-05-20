@@ -22,8 +22,21 @@
       </button>
     </div>
 
+    <!-- LOADING -->
+    <div v-if="loading" class="loading-wrap">
+      <v-progress-circular indeterminate color="#0369a1" size="32" />
+      <p>Loading permissions…</p>
+    </div>
+
+    <!-- ERROR -->
+    <div v-else-if="error" class="error-wrap">
+      <v-icon size="32" color="#ef4444">mdi-alert-circle-outline</v-icon>
+      <p>{{ error }}</p>
+      <button class="btn-primary" @click="fetchPermissions">Retry</button>
+    </div>
+
     <!-- TABLE -->
-    <div class="table-card">
+    <div v-else class="table-card">
       <table class="perm-table">
         <thead>
           <tr>
@@ -34,12 +47,12 @@
         </thead>
         <tbody>
           <tr
-            v-for="(perm, index) in filteredPermissions"
+            v-for="(perm, index) in pagedPermissions"
             :key="perm.id"
             class="perm-row"
             :class="{ 'is-new': perm.isNew }"
           >
-            <td class="idx-cell">{{ index + 1 }}</td>
+            <td class="idx-cell">{{ pageStart + index }}</td>
             <td>
               <code class="perm-slug">{{ perm.name }}</code>
             </td>
@@ -57,14 +70,57 @@
             </td>
           </tr>
 
-          <tr v-if="filteredPermissions.length === 0">
+          <tr v-if="pagedPermissions.length === 0">
             <td colspan="3" class="empty-cell">
-              <v-icon size="36" color="#cbd5e1">mdi-shield-search-outline</v-icon>
+              <!-- SVG matches your users table empty-state style -->
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-svg">
+                <circle cx="20" cy="16" r="7" stroke="#cbd5e1" stroke-width="2.2" fill="none"/>
+                <path d="M6 38c0-7.18 6.268-13 14-13" stroke="#cbd5e1" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <circle cx="34" cy="34" r="8" stroke="#cbd5e1" stroke-width="2.2" fill="none"/>
+                <line x1="40.2" y1="40.2" x2="44" y2="44" stroke="#cbd5e1" stroke-width="2.4" stroke-linecap="round"/>
+              </svg>
               <p>No permissions found</p>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- PAGINATION BAR -->
+      <div class="pagination-bar">
+        <span class="pg-info">
+          Showing {{ pagedPermissions.length === 0 ? 0 : pageStart }}–{{ pageEnd }} of
+          {{ filteredPermissions.length }} permission{{ filteredPermissions.length !== 1 ? 's' : '' }}
+        </span>
+
+        <div class="pg-controls">
+          <span class="pg-label">Show</span>
+          <select v-model="perPage" class="pg-select" @change="currentPage = 1">
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+          </select>
+          <span class="pg-label">per page</span>
+
+          <div class="pg-nav">
+            <button class="pg-btn" :disabled="currentPage === 1" @click="currentPage--">
+              <v-icon size="15">mdi-chevron-left</v-icon>
+            </button>
+            <template v-for="page in visiblePages" :key="page">
+              <span v-if="page === '...'" class="pg-ellipsis">…</span>
+              <button
+                v-else
+                class="pg-btn"
+                :class="{ active: page === currentPage }"
+                @click="currentPage = page"
+              >{{ page }}</button>
+            </template>
+            <button class="pg-btn" :disabled="currentPage === totalPages || totalPages === 0" @click="currentPage++">
+              <v-icon size="15">mdi-chevron-right</v-icon>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
 
@@ -92,11 +148,13 @@
               autofocus
             />
             <p class="field-hint">Use lowercase with spaces (e.g. <code>edit announcements</code>)</p>
+            <p v-if="formError" class="form-error">{{ formError }}</p>
           </div>
 
           <div class="modal-footer">
             <button class="btn-cancel" @click="closeModal">Cancel</button>
-            <button class="btn-save" @click="savePermission" :disabled="!form.name.trim()">
+            <button class="btn-save" @click="savePermission" :disabled="!form.name.trim() || saving">
+              <v-progress-circular v-if="saving" indeterminate size="14" width="2" color="white" class="mr-1" />
               {{ isEditing ? 'Save Changes' : 'Create' }}
             </button>
           </div>
@@ -119,7 +177,10 @@
           </p>
           <div class="modal-footer centered">
             <button class="btn-cancel" @click="showDeleteModal = false">Cancel</button>
-            <button class="btn-delete" @click="deletePermission">Delete</button>
+            <button class="btn-delete" @click="deletePermission" :disabled="deleting">
+              <v-progress-circular v-if="deleting" indeterminate size="14" width="2" color="white" class="mr-1" />
+              Delete
+            </button>
           </div>
         </div>
       </div>
@@ -130,84 +191,171 @@
 
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+
 definePageMeta({
   layout: "authenticated",
   middleware: "auth",
 });
-const permissions = ref([
-  { id: 1,  name: "view users",           isNew: false },
-  { id: 2,  name: "create users",         isNew: false },
-  { id: 3,  name: "edit users",           isNew: false },
-  { id: 4,  name: "delete users",         isNew: false },
-  { id: 5,  name: "view accounting",      isNew: false },
-  { id: 6,  name: "create accounting",    isNew: false },
-  { id: 7,  name: "edit accounting",      isNew: false },
-  { id: 8,  name: "delete accounting",    isNew: false },
-  { id: 9,  name: "view announcements",   isNew: false },
-  { id: 10, name: "create announcements", isNew: false },
-  { id: 11, name: "edit announcements",   isNew: false },
-  { id: 12, name: "delete announcements", isNew: false },
-  { id: 13, name: "manage permissions",   isNew: false },
-  { id: 14, name: "manage roles",         isNew: false },
-]);
 
-const search = ref("");
+const config = useRuntimeConfig();
 
+// ── State ──
+const permissions    = ref([]);
+const search         = ref("");
+const loading        = ref(false);
+const error          = ref(null);
+const saving         = ref(false);
+const deleting       = ref(false);
+const formError      = ref(null);
+
+// ── Pagination state ──
+const currentPage = ref(1);
+const perPage     = ref(10);
+
+// ── Computed ──
 const filteredPermissions = computed(() =>
   permissions.value.filter(p =>
     !search.value || p.name.toLowerCase().includes(search.value.toLowerCase())
   )
 );
 
-/* ── Modal ── */
+// Reset to page 1 whenever search changes
+watch(() => search.value, () => { currentPage.value = 1; });
+
+const totalPages = computed(() => Math.ceil(filteredPermissions.value.length / perPage.value) || 1);
+const pageStart  = computed(() => filteredPermissions.value.length === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1);
+const pageEnd    = computed(() => Math.min(currentPage.value * perPage.value, filteredPermissions.value.length));
+
+const pagedPermissions = computed(() =>
+  filteredPermissions.value.slice(
+    (currentPage.value - 1) * perPage.value,
+    currentPage.value * perPage.value
+  )
+);
+
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const cur   = currentPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [];
+  if (cur <= 4) {
+    pages.push(1, 2, 3, 4, 5, '...', total);
+  } else if (cur >= total - 3) {
+    pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', cur - 1, cur, cur + 1, '...', total);
+  }
+  return pages;
+});
+
+// ── Fetch all permissions ──
+const fetchPermissions = async () => {
+  loading.value = true;
+  error.value   = null;
+  try {
+    const data = await $fetch(`${config.public.apiBase}/api/permissions`);
+    // Support both { data: [...] } and plain array responses
+    permissions.value = (data?.data ?? data).map(p => ({ ...p, isNew: false }));
+  } catch (err) {
+    error.value = err?.data?.message ?? "Failed to load permissions.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(fetchPermissions);
+
+// ── Modal ──
 const showModal  = ref(false);
 const isEditing  = ref(false);
 const editTarget = ref(null);
 const form       = ref({ name: "" });
 
 const openCreateModal = () => {
-  form.value = { name: "" };
+  form.value      = { name: "" };
+  formError.value = null;
   isEditing.value = false;
   showModal.value = true;
 };
 
 const openEditModal = (perm) => {
-  form.value = { name: perm.name };
+  form.value       = { name: perm.name };
+  formError.value  = null;
   isEditing.value  = true;
   editTarget.value = perm;
   showModal.value  = true;
 };
 
-const closeModal = () => { showModal.value = false; };
-
-const savePermission = () => {
-  if (!form.value.name.trim()) return;
-  if (isEditing.value && editTarget.value) {
-    editTarget.value.name  = form.value.name.toLowerCase().trim();
-    editTarget.value.isNew = false;
-  } else {
-    permissions.value.unshift({
-      id: Date.now(),
-      name: form.value.name.toLowerCase().trim(),
-      isNew: true,
-    });
-    setTimeout(() => {
-      const p = permissions.value.find(p => p.isNew);
-      if (p) p.isNew = false;
-    }, 2000);
-  }
-  closeModal();
+const closeModal = () => {
+  if (saving.value) return;
+  showModal.value = false;
 };
 
-/* ── Delete ── */
+const savePermission = async () => {
+  if (!form.value.name.trim() || saving.value) return;
+  saving.value    = true;
+  formError.value = null;
+
+  const payload = { name: form.value.name.toLowerCase().trim() };
+
+  try {
+    if (isEditing.value && editTarget.value) {
+      // PUT /api/permissions/{id}
+      const data = await $fetch(
+        `${config.public.apiBase}/api/permissions/${editTarget.value.id}`,
+        { method: "PUT", body: payload }
+      );
+      const updated = data?.data ?? data;
+      const idx = permissions.value.findIndex(p => p.id === editTarget.value.id);
+      if (idx !== -1) permissions.value[idx] = { ...updated, isNew: false };
+    } else {
+      // POST /api/permissions
+      const data = await $fetch(
+        `${config.public.apiBase}/api/permissions`,
+        { method: "POST", body: payload }
+      );
+      const created = data?.data ?? data;
+      permissions.value.unshift({ ...created, isNew: true });
+      setTimeout(() => {
+        const p = permissions.value.find(p => p.id === created.id);
+        if (p) p.isNew = false;
+      }, 2000);
+    }
+    saving.value = false;
+    showModal.value = false;
+  } catch (err) {
+    formError.value = err?.data?.message ?? "Something went wrong. Please try again.";
+    saving.value = false;
+  }
+};
+
+// ── Delete ──
 const showDeleteModal = ref(false);
 const deleteTarget    = ref(null);
 
-const confirmDelete = (perm) => { deleteTarget.value = perm; showDeleteModal.value = true; };
-const deletePermission = () => {
-  permissions.value = permissions.value.filter(p => p.id !== deleteTarget.value.id);
-  showDeleteModal.value = false;
+const confirmDelete = (perm) => {
+  deleteTarget.value    = perm;
+  showDeleteModal.value = true;
+};
+
+const deletePermission = async () => {
+  if (deleting.value) return;
+  deleting.value = true;
+  try {
+    // DELETE /api/permissions/{id}
+    await $fetch(
+      `${config.public.apiBase}/api/permissions/${deleteTarget.value.id}`,
+      { method: "DELETE" }
+    );
+    permissions.value    = permissions.value.filter(p => p.id !== deleteTarget.value.id);
+    showDeleteModal.value = false;
+  } catch (err) {
+    // Keep modal open and show error in console; you can add a toast here
+    console.error("Delete failed:", err?.data?.message ?? err);
+  } finally {
+    deleting.value = false;
+  }
 };
 </script>
 
@@ -266,6 +414,15 @@ const deletePermission = () => {
   cursor: pointer; color: #94a3b8; display: flex; align-items: center;
 }
 
+/* ── Loading / Error ── */
+.loading-wrap, .error-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 60px 20px;
+  color: #94a3b8; font-size: 0.875rem;
+}
+.error-wrap { color: #ef4444; }
+.error-wrap p { color: #64748b; }
+
 /* ── Table ── */
 .table-card {
   background: white; border-radius: 14px;
@@ -285,6 +442,7 @@ const deletePermission = () => {
 }
 .perm-table th:last-child { text-align: right; }
 .perm-table td:last-child { text-align: right; }
+.perm-table td.empty-cell { text-align: center !important; }
 
 .perm-table td { padding: 12px 18px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .perm-row { transition: background 0.1s; }
@@ -314,11 +472,45 @@ const deletePermission = () => {
 .act-btn.edit:hover   { border-color: #0369a1; background: #eff6ff; color: #0369a1; }
 .act-btn.delete:hover { border-color: #ef4444; background: #fef2f2; color: #ef4444; }
 
+/* ── Empty state ── */
+.empty-svg { display: block; margin: 0 auto 10px; opacity: 0.7; }
 .empty-cell {
-  text-align: center; padding: 48px 16px !important;
+  text-align: center !important; padding: 52px 16px !important;
   color: #94a3b8;
 }
-.empty-cell p { margin: 10px 0 0; font-size: 0.875rem; }
+.empty-cell p { margin: 0; font-size: 0.875rem; color: #94a3b8; }
+
+/* ── Pagination bar ── */
+.pagination-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-top: 1px solid #f1f5f9;
+  background: #fafcff; flex-wrap: wrap; gap: 10px;
+}
+.pg-info { font-size: 0.78rem; color: #94a3b8; }
+.pg-controls { display: flex; align-items: center; gap: 8px; }
+.pg-label { font-size: 0.78rem; color: #64748b; }
+.pg-select {
+  padding: 4px 24px 4px 10px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+  font-size: 0.8rem; font-family: "DM Sans", sans-serif; color: #334155;
+  background: white; outline: none; cursor: pointer;
+  appearance: auto;
+  transition: border-color 0.15s;
+}
+.pg-select:focus { border-color: #0369a1; }
+
+.pg-nav { display: flex; align-items: center; gap: 3px; margin-left: 4px; }
+.pg-btn {
+  min-width: 30px; height: 30px; padding: 0 6px;
+  border: 1.5px solid #e2e8f0; border-radius: 7px;
+  background: white; font-size: 0.78rem; font-weight: 600;
+  font-family: "DM Sans", sans-serif; color: #475569;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.pg-btn:hover:not(:disabled):not(.active) { border-color: #0369a1; color: #0369a1; background: #eff6ff; }
+.pg-btn.active { background: linear-gradient(135deg, #0c4a6e, #0369a1); color: white; border-color: transparent; }
+.pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pg-ellipsis { font-size: 0.8rem; color: #94a3b8; padding: 0 4px; line-height: 30px; }
 
 /* ── Modal ── */
 .modal-backdrop {
@@ -355,6 +547,12 @@ const deletePermission = () => {
 .field-hint { font-size: 0.72rem; color: #94a3b8; margin: 6px 0 0; }
 .field-hint code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; color: #0c4a6e; font-size: 0.7rem; }
 
+.form-error {
+  font-size: 0.78rem; color: #ef4444;
+  margin: 8px 0 0; padding: 8px 10px;
+  background: #fef2f2; border-radius: 7px; border: 1px solid #fecaca;
+}
+
 .f-input {
   width: 100%; padding: 10px 13px;
   border: 1.5px solid #e2e8f0; border-radius: 9px;
@@ -380,6 +578,7 @@ const deletePermission = () => {
 .btn-cancel:hover { border-color: #94a3b8; }
 
 .btn-save {
+  display: flex; align-items: center; gap: 4px;
   padding: 8px 20px; border: none; border-radius: 9px;
   background: linear-gradient(135deg, #0c4a6e, #0369a1);
   color: white; font-family: "DM Sans", sans-serif;
@@ -400,12 +599,14 @@ const deletePermission = () => {
 .del-msg { font-size: 0.875rem; color: #64748b; line-height: 1.6; margin: 8px 0 20px; }
 
 .btn-delete {
+  display: flex; align-items: center; gap: 4px;
   padding: 8px 20px; border: none; border-radius: 9px;
   background: #ef4444; color: white;
   font-family: "DM Sans", sans-serif; font-size: 0.875rem; font-weight: 600;
   cursor: pointer; transition: opacity 0.15s;
 }
-.btn-delete:hover { opacity: 0.88; }
+.btn-delete:hover:not(:disabled) { opacity: 0.88; }
+.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Transitions */
 .modal-enter-active, .modal-leave-active { transition: opacity 0.18s ease; }

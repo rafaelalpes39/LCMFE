@@ -709,7 +709,9 @@ const vClickOutside = {
 };
 
 /* ── Static data ─────────────────────────────────── */
-const roles = ["Lector", "Commentator", "Coordinator", "Administrator"];
+
+// roles is now fetched dynamically from /api/roles
+const roles = ref([]);
 
 const teams = [
   {
@@ -898,7 +900,7 @@ const initials = (name) =>
     .join("")
     .toUpperCase() ?? "?";
 
-/* ── Fetch ───────────────────────────────────────── */
+/* ── Fetch Users ─────────────────────────────────── */
 const fetchUsers = async () => {
   try {
     const res = await $fetch(`${config.public.apiBase}/api/users`);
@@ -912,7 +914,23 @@ const fetchUsers = async () => {
     error(err?.data?.message || "Failed to load users.");
   }
 };
-onMounted(() => fetchUsers());
+
+/* ── Fetch Roles ─────────────────────────────────── */
+const fetchRoles = async () => {
+  try {
+    const res = await $fetch(`${config.public.apiBase}/api/roles`);
+    // Handles: string[] | { roles: string[] } | { roles: { name: string }[] } | { name: string }[]
+    const raw = res.data ?? res;
+    roles.value = raw.map((r) => (typeof r === "string" ? r : r.name));
+  } catch (err) {
+    error(err?.data?.message || "Failed to load roles.");
+  }
+};
+
+onMounted(() => {
+  fetchUsers();
+  fetchRoles();
+});
 
 /* ── Validation ──────────────────────────────────── */
 const errors = ref({});
@@ -971,7 +989,7 @@ const emptyForm = () => ({
   password: "",
   confirmPassword: "",
   status: "active",
-  membershipExpiration: "",
+  membership_expiration: "",
 });
 const form = ref(emptyForm());
 
@@ -986,7 +1004,10 @@ const openEditModal = (user) => {
     ...user,
     password: "",
     confirmPassword: "",
-    membershipExpiration: user.membershipExpiration ?? "",
+     membership_expiration:
+      user.membership_expiration === "—"
+        ? ""
+        : user.membership_expiration ?? "",
   };
   errors.value = {};
   isEditing.value = true;
@@ -1094,7 +1115,6 @@ const submitReset = async () => {
     success(`Password reset for ${resetTarget.value.name}`);
     showResetModal.value = false;
 
-    // reset fields
     resetForm.value = {
       password: "",
       confirm: "",

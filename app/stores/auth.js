@@ -9,15 +9,12 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (credentials) => {
     try {
       const response = await $fetch(`${config.public.apiBase}/api/login`, {
-
-
         method: 'POST',
         body: credentials
       })
 
       token.value = response.token
       user.value = response.user
-
       return response
     } catch (error) {
       throw error
