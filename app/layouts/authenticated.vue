@@ -386,17 +386,41 @@ const isTreasurer = computed(() => userRole.value === "treasurer");
 const isSecretary = computed(() => userRole.value === "secretary");
 const isCoordinator = computed(() => userRole.value === "coordinator");
 const isOfficer = computed(() => userRole.value === "officer");
+const isDeveloper = computed(() => userRole.value === "developer");
 
 // An officer has the same access as Treasurer + Secretary + Coordinator combined
 const canAccess = computed(() => ({
-  dashboard: true, // everyone
-  statementOfAccount: true, // everyone
-  attendance: true, // everyone
-  profileStatus: true, // everyone
-  accounting: isTreasurer.value || isOfficer.value || isCoordinator.value,
-  scheduling: isSecretary.value || isOfficer.value || isCoordinator.value,
-  announcement: isCoordinator.value || isOfficer.value,
-  user: isCoordinator.value || isOfficer.value,
+  dashboard: !isDeveloper.value,
+  statementOfAccount: !isDeveloper.value,
+  attendance: !isDeveloper.value,
+  profileStatus: !isDeveloper.value,
+
+  // Accounting:
+  // Treasurer + Developer + Coordinator + Secretary
+  accounting:
+    isTreasurer.value ||
+    isDeveloper.value ||
+    isCoordinator.value,
+
+  // Scheduling:
+  // Secretary + Developer + Coordinator + Treasurer
+  scheduling:
+    isSecretary.value ||
+    isDeveloper.value ||
+    isCoordinator.value ||
+    isTreasurer.value,
+
+  // Announcement:
+  // Coordinator + Developer
+  announcement:
+    isCoordinator.value ||
+    isDeveloper.value,
+
+  // User:
+  // Coordinator + Developer
+  user:
+    isCoordinator.value ||
+    isDeveloper.value,
 }));
 
 // ── Full sidebar definition (all items) ──────────────────────────────────────
@@ -480,6 +504,7 @@ const filteredSidebar = computed(() =>
 // ── Resize handling ───────────────────────────────────────────────────────────
 function onResize() {
   windowWidth.value = window.innerWidth;
+
   if (windowWidth.value < 960) {
     drawer.value = false;
     rail.value = false;
@@ -498,6 +523,7 @@ onMounted(() => {
   window.addEventListener("resize", onResize);
   onResize();
 });
+
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
 });
